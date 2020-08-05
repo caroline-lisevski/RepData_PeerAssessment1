@@ -1,0 +1,138 @@
+---
+title: "Reproducible Research: Peer Assessment 1 - Caroline Lisevski"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+## Loading and preprocessing the data
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(stats)
+library(lattice)
+library(Hmisc)
+```
+
+
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement -- a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+```{r - load data}
+activity <- read.csv("activity.csv")
+summary(activity)
+```
+
+This file has 17568 observations, 2304 of that are NA, and three variables: `steps`, `date` and `interval`.
+
+
+## What is mean total number of steps taken per day?
+
+We are going to plot a histogram of the number of steps per day.
+
+```{r}
+steps_day <- aggregate(steps ~ date, activity, sum)
+hist(steps_day$steps, main = paste("Total Steps Each Day"), col="violet",xlab="Number of Steps", breaks = 30)
+```
+
+
+Now we are going to calculate the mean total number of steps taken per day:
+
+```{r}
+mean_steps <- mean(steps_day$steps)
+mean_steps
+```
+
+According to out data, this person took 10766,19 steps per day, in average.
+The mean of this distribution:
+
+```{r}
+median_step <- median(steps_day$steps)
+median_step
+```
+
+We can see our mean and median are very close, suggesting that we have a normal distribution.
+
+## What is the average daily activity pattern?
+
+We are going to analyze the average daily activity pattern calculating the average of steps for each interval of days.
+
+```{r}
+steps_interval <- aggregate(steps ~ interval, activity, FUN = mean)
+plot(steps_interval$interval,steps_interval$steps, type="h", xlab="Interval", ylab="Number of Steps",main="Average Number of Steps per Day by Interval")
+```
+
+
+
+
+```{r}
+max_interval <- steps_interval[which.max(steps_interval$steps),]$interval
+max_interval
+max_steps <- max(steps_interval$steps)
+max_steps
+```
+
+The 5-minute interval with more steps is 835 with 206.1698 steps.
+
+
+## Imputing missing values
+
+Now we are going to determine how many cases has NA:
+
+```{r}
+sum(!complete.cases(activity))
+```
+
+We can see that 2304 data are missing in this dataset. We are going to replace the missing data with the mean of steps, unsing the function `impute`. Imputing missing values:
+
+```{r}
+
+new_act <- activity
+
+new_act$steps <- impute(activity$steps, fun=mean)
+
+summary(new_act)
+```
+
+Plotting a new histogram of the number of steps per day:
+
+
+```{r}
+new_steps_day <- aggregate(steps ~ date, new_act, sum)
+hist(new_steps_day$steps, main = paste("Total Steps Each Day"), col="light blue",xlab="Number of Steps", breaks = 30)
+
+```
+Calculating the mean and the median of the fill dataset:
+
+```{r}
+new_mean_steps <- mean(new_steps_day$steps)
+new_mean_steps
+new_median_steps <- median(new_steps_day$steps)
+new_median_steps
+```
+
+The mean and median are not so different from the values found with the incomplete dataset.
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+Now we are going to see if there is difference in the activity pattern between weekdays and weekends. First we are going to create a new variable called `weekdays` using the column `date` from our `new_act` dataset:
+
+```{r}
+new_act <- new_act %>% mutate(weekdays = weekdays(as.Date(date))) #changing the date for thee days of week
+new_act <- new_act %>% mutate(is_week = ifelse(weekdays %in% c("Saturday", "Sunday"),"Weekend","Weekday")) #creating two level variable
+head(new_act,3)
+```
+
+Plotting the data:
+
+```{r}
+new_steps_interval <- aggregate(steps ~ interval + is_week, new_act, FUN = mean)
+
+xyplot(new_steps_interval$steps ~ new_steps_interval$interval|new_steps_interval$is_week, main="Average Steps per Day by Interval",xlab="Interval", ylab="Steps",layout=c(1,2), type="p", col = "orange")
+```
+
+Wee can see the activity for weekends are lower than for weekdays.
